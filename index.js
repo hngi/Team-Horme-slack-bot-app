@@ -20,6 +20,7 @@ const uuid = require('uuid/v4');
 const dfs = require('dropbox-fs')({
     apiKey: access_token
 });
+const siteUrl = process.env.SITE_URL;
  
 
 
@@ -82,7 +83,7 @@ app.get('/auth/slack/callback',
 );
 
 app.get('/login/dropbox',(req, res)=>{
-  ndbx.Authenticate(dropKey, dropSecret, 'https://saverbyhorme.glitch.me/oauth/callback', (err, url) => {
+  ndbx.Authenticate(dropKey, dropSecret, `${siteUrl}/oauth/callback`, (err, url) => {
 	//console.log(url);
     res.redirect(url)
 });
@@ -91,7 +92,7 @@ app.get('/login/dropbox',(req, res)=>{
 app.get('/oauth/callback', (req, res) => {
   console.log(req.query.code)
   var rescode = req.query.code;
-  ndbx.AccessToken(dropKey, dropSecret, rescode, 'https://saverbyhorme.glitch.me/oauth/callback', (err, body) => {
+  ndbx.AccessToken(dropKey, dropSecret, rescode, `${siteUrl}/oauth/callback`, (err, body) => {
 	  var access_token = body.access_token;
     // console.log(body);
     localStorage.setItem('access-token', access_token);
@@ -179,7 +180,7 @@ const handleMessage = (data, body) => {
     message.includes(" sign in")
   ) {
     
-    var msg = `Authenticate your dropbox account by clicking https://saverbyhorme.glitch.me/login/dropbox`;
+    var msg = `Authenticate your dropbox account by clicking ${siteUrl}/login/dropbox`;
     
     slack.chat.postMessage({ channel: channel, text: msg })
     .catch(console.error);
