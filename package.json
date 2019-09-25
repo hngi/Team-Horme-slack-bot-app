@@ -1,34 +1,27 @@
 {
-  "name": "horme-slackbot",
+  "name": "@slack/events-api-example-greet-and-react",
   "version": "1.0.0",
-  "description": "Slackbot to save conversation to external drive",
+  "private": true,
+  "description": "A basic example of using the Slack Events API Adapter for Node",
   "main": "index.js",
   "scripts": {
-    "start": "node index"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/IsraelAmanam/Horme-slackbot.git"
-  },
-  "keywords": [
-    "slack",
-    "slackbots",
-    "slackbot"
-  ],
-  "author": "HNG Team Horme",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/IsraelAmanam/Horme-slackbot/issues"
-  },
-  "homepage": "https://github.com/IsraelAmanam/Horme-slackbot#readme",
+  "author": "Ankur Oberoi <aoberoi@gmail.com>",
+  "license": "MIT",
   "dependencies": {
-    "axios": "^0.19.0",
+    "@aoberoi/passport-slack": "^1.0.5",
+    "@slack/client": "^4.3.1",
+    "@slack/events-api": "^2.0.0",
+    "dotenv": "^4.0.0",
+    "express": "^4.16.3",
+    "passport": "^0.3.2",
+    "passport-dropbox": "^2.0.0",
+    "node-dropbox": "^0.1.8",
+    "node-localstorage": "^1.3.1",
+    "uuid": "^3.3.3",
     "dropbox-fs": "^0.3.1",
-    "express": "^4.17.1",
-    "mongoose": "^5.7.1",
-    "slack-client": "^2.0.6",
-    "slackbots": "^1.2.0",
-    "vm2": "^3.8.4",
     "xmlhttprequest": "^1.8.0"
   }
 }
