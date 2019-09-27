@@ -9,19 +9,14 @@ const http = require('http');
 const path = require('path');
 const express = require('express');
 const ndbx = require('node-dropbox');
-const LocalStorage = require('node-localstorage').LocalStorage;
-const localStorage = new LocalStorage('./scratch');
-const XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
-var access_token = localStorage.getItem('access-token');
-var slackaccess = localStorage.getItem('x-accesstoken');
+const XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest
 const dropKey = process.env.DROPBOX_APP_KEY;
 const dropSecret = process.env.DROPBOX_APP_SECRET;
 const uuid = require('uuid/v4');
-const dfs = require('dropbox-fs')({
-    apiKey: access_token
-});
+const siteAddress = process.env.SITE_ADDRESS
+var dropToken = 'undefined';
  
-
+// var api = ndbx.api(dropToken);
 
 var trustProxy = false;
 
@@ -32,6 +27,7 @@ const slackEvents = slackEventsApi.createEventAdapter(process.env.SLACK_SIGNING_
 
 // Initialize a data structures to store team authorization info (typically stored in a database)
 const botAuthorizations = {}
+var authToken;
 
 // Helpers to cache and lookup appropriate client
 // NOTE: Not enterprise-ready. if the event was triggered inside a shared channel, this lookup
@@ -50,15 +46,18 @@ function getClientByTeamId(teamId) {
 
 // Initialize Add to Slack (OAuth) helpers
 passport.use(new SlackStrategy({
+  apiVersion: '2',
   clientID: process.env.SLACK_CLIENT_ID,
   clientSecret: process.env.SLACK_CLIENT_SECRET,
   skipUserProfile: true,
 }, (accessToken, scopes, team, extra, profiles, done) => {
-  localStorage.getItem('x-accesstoken', accessToken);
-  console.log(accessToken)
+  localStorage.setItem('x-accesstoken', accessToken);
+  authToken = accessToken;
   botAuthorizations[team.id] = extra.bot.accessToken;
   done(null, {});
 }));
+
+
 
 // Initialize an Express application
 const app = express();
@@ -69,7 +68,7 @@ app.get('/', (req, res) => {
   res.send('<div style="text-align: center;"><a href="/auth/slack"><img alt="Add to Slack" height="40" width="139" src="https://platform.slack-edge.com/img/add_to_slack.png" srcset="https://platform.slack-edge.com/img/add_to_slack.png 1x, https://platform.slack-edge.com/img/add_to_slack@2x.png 2x" /></a></div>');
 });
 app.get('/auth/slack', passport.authenticate('slack', {
-  scope: ['bot']
+  scope: ['bot', 'im:read', 'im:write']
 }));
 app.get('/auth/slack/callback',
   passport.authenticate('slack', { session: false }),
@@ -81,24 +80,25 @@ app.get('/auth/slack/callback',
   }
 );
 
-app.get('/login/dropbox',(req, res)=>{
-  ndbx.Authenticate(dropKey, dropSecret, 'https://saverbyhorme.glitch.me/oauth/callback', (err, url) => {
+app.get('/login/dropbox', (req, res)=>{
+  ndbx.Authenticate(dropKey, dropSecret, siteAddress+'/oauth/callback', (err, url) => {
 	//console.log(url);
     res.redirect(url)
-});
+  });
 });
 
 app.get('/oauth/callback', (req, res) => {
-  console.log(req.query.code)
+  // console.log(req)
   var rescode = req.query.code;
-  ndbx.AccessToken(dropKey, dropSecret, rescode, 'https://saverbyhorme.glitch.me/oauth/callback', (err, body) => {
-	  var access_token = body.access_token;
-    // console.log(body);
-    localStorage.setItem('access-token', access_token);
-    res.redirect('/dropbox')
-
+  ndbx.AccessToken(dropKey, dropSecret, rescode, siteAddress+'/oauth/callback', (err, body) => {
+	var access_token = body.access_token;
+  // console.log(body);
+  // localStorage.setItem('access-token', access_token);
+  dropToken = access_token;
+  res.redirect('/dropbox')
+}); 
 });
-  });
+
 app.get('/dropbox', (req, res) => {
   res.send('Dropbox is now authenticated')
 })
@@ -118,7 +118,7 @@ slackEvents.on('message', (message, body) => {
     // Initialize a client
   const slack = getClientByTeamId(body.team_id);
   // Only deal with messages that have no subtype (plain messages) and contain 'hi'
-  console.log(message);
+  // console.log(message);
   if (message.type == "message") {
     if (message.subtype == "bot_message") {
       return
@@ -139,6 +139,10 @@ slackEvents.on('message', (message, body) => {
 const date = Date.now();
 
 const saveHistory = (history, message, slack) => {
+  if (dropToken == 'undefined') return slack.chat.postMessage({channel: message.channel, text: `Please sign in your Dropbox application to continue...`})
+  const dfs = require('dropbox-fs')({
+    apiKey: dropToken
+  });
   dfs.writeFile(
     `/slackchathistory/slack-chat-${date}.json`,
     history,
@@ -148,22 +152,23 @@ const saveHistory = (history, message, slack) => {
         return  console.log(err);//slack.chat.postMessage({ channel: message.channel, text: "Sorry, <@"+message.user+">! "+err+" :sad" }).catch(console.error);
         
       }
-      // console.log(stat);
-      slack.chat.postMessage({ channel: message.channel, text: "Hello <@"+message.user+">! Your chat history is saved to your dropbox public folder Type @hormesaver **check files** to check it :tada:" }).catch(console.error);
+      console.log(stat);
+      slack.chat.postMessage({ channel: message.channel, text: "Hello <@"+message.user+">! Your chat history is saved to your dropbox public folder Type `@hormesaver check files` to check it :tada:" }).catch(console.error);
       
     }
   );
 };
 
 const getChannelHistory = (message, slack) => {
-  var tokens = slackaccess;
-  var url = `https://slack.com/api/conversations.history?token=${tokens}&channel=${message.channel}`;
+  var tokens = authToken;
+  var url = `https://slack.com/api/conversations.history?token=${tokens}&channel=${message.channel}&pretty=1`;
   var xhr = new XMLHttpRequest();
   xhr.onreadystatechange = function() {
     if (xhr.readyState == 4 && xhr.status == 200)
       slack.chat.postMessage({ channel: message.channel, text: "<@"+ message.user +">! Now saving your chat history to dropbox..." })
     .catch(console.error);
       saveHistory(xhr.responseText, message, slack);
+    // console.log(xhr.responseText)
   };
   xhr.open("GET", url, true);
   xhr.send();
@@ -173,13 +178,17 @@ const handleMessage = (data, body) => {
   var message = data.text;
   var channel = data.channel;
   const slack = getClientByTeamId(body.team_id);
+  if(dropToken == 'undefined') return slack.chat.postMessage({channel: message.channel, text: `Please sign in your Dropbox application to continue...`})
+  const dfs = require('dropbox-fs')({
+    apiKey: dropToken
+  });
   // console.log(channel);
   if (
     message.includes(" signin") ||
     message.includes(" sign in")
   ) {
     
-    var msg = `Authenticate your dropbox account by clicking https://saverbyhorme.glitch.me/login/dropbox`;
+    var msg = `Authenticate your dropbox account by clicking ${siteAddress}/login/dropbox`;
     
     slack.chat.postMessage({ channel: channel, text: msg })
     .catch(console.error);
@@ -191,15 +200,13 @@ const handleMessage = (data, body) => {
   }
   if (message.includes(" help") || message.includes("@hormesaver help")) {
     slack.chat.postMessage({ channel: channel, text: `To save your chat history to dropbox with hormesaver,\n 
-Kindly type @hormesaver save history. \n To do this required login in to your dropbox which you can also do by
-Typing @hormesaver signin or @hormesaver signin \n To check the files saved to dropbox type @hormesaver check files` })
+Kindly type save history. \n To do this required login in to your dropbox which you can also do by
+Typing signin or signin \n To check the files saved to dropbox type check files` })
     .catch(console.error);
   }
-  if(message.includes(" check files")){
-    dfs.readdir('/slackchathistory', (err, result) => {
+  if(message.includes(" check files")){  dfs.readdir('/slackchathistory', (err, result) => {
     if (err) {
-	console.log(err);
-      slack.chat.postMessage({ channel: channel, text: "Sorry! <@"+ data.user +">! Error "+err.status.code+" while reading your dropbox folder..." })
+	return slack.chat.postMessage({ channel: channel, text: "Sorry! <@"+ data.user +">! Error "+err.status.code+" while reading your dropbox folder..." })
     .catch(console.error);
     }
     // console.log(result);
@@ -211,6 +218,11 @@ Typing @hormesaver signin or @hormesaver signin \n To check the files saved to d
     .catch(console.error);
     });
 });
+  }
+  if (message.includes(" sign out") || message.includes("sign out")) {
+  	dropToken = 'undefined';
+  	slack.chat.postMessage({ channel: channel, text: "<@"+ data.user +">! Your dropbox is unauthenticated!!" })
+	  .catch(console.error);
   }
 };
 
@@ -234,6 +246,7 @@ slackEvents.on('error', (error) => {
     // This error type also has a `body` propery containing the request body which failed verification.
     console.error(`An unverified request was sent to the Slack events Request URL. Request body: \
 ${JSON.stringify(error.body)}`);
+    console.error(error);
   } else {
     console.error(`An error occurred while handling a Slack event: ${error.message}`);
   }
