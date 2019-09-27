@@ -9,11 +9,7 @@ const http = require('http');
 const path = require('path');
 const express = require('express');
 const ndbx = require('node-dropbox');
-const LocalStorage = require('node-localstorage').LocalStorage;
-const localStorage = new LocalStorage('./scratch');
-const XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
-var access_token = localStorage.getItem('access-token');
-var slackaccess = localStorage.getItem('x-accesstoken');
+const XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest
 const dropKey = process.env.DROPBOX_APP_KEY;
 const dropSecret = process.env.DROPBOX_APP_SECRET;
 const uuid = require('uuid/v4');
@@ -122,7 +118,7 @@ slackEvents.on('message', (message, body) => {
     // Initialize a client
   const slack = getClientByTeamId(body.team_id);
   // Only deal with messages that have no subtype (plain messages) and contain 'hi'
-  console.log(message);
+  // console.log(message);
   if (message.type == "message") {
     if (message.subtype == "bot_message") {
       return
@@ -182,12 +178,10 @@ const handleMessage = (data, body) => {
   var message = data.text;
   var channel = data.channel;
   const slack = getClientByTeamId(body.team_id);
-  if(dropToken === 'undefined') {
-    return slack.chat.postMessage({channel: message.channel, text: `Please sign in your Dropbox application to continue...`})
-  }
+  if(dropToken == 'undefined') return slack.chat.postMessage({channel: message.channel, text: `Please sign in your Dropbox application to continue...`})
   const dfs = require('dropbox-fs')({
     apiKey: dropToken
-});
+  });
   // console.log(channel);
   if (
     message.includes(" signin") ||
@@ -206,8 +200,8 @@ const handleMessage = (data, body) => {
   }
   if (message.includes(" help") || message.includes("@hormesaver help")) {
     slack.chat.postMessage({ channel: channel, text: `To save your chat history to dropbox with hormesaver,\n 
-Kindly type @hormesaver save history. \n To do this required login in to your dropbox which you can also do by
-Typing @hormesaver signin or @hormesaver signin \n To check the files saved to dropbox type @hormesaver check files` })
+Kindly type save history. \n To do this required login in to your dropbox which you can also do by
+Typing signin or signin \n To check the files saved to dropbox type check files` })
     .catch(console.error);
   }
   if(message.includes(" check files")){  dfs.readdir('/slackchathistory', (err, result) => {
@@ -225,7 +219,7 @@ Typing @hormesaver signin or @hormesaver signin \n To check the files saved to d
     });
 });
   }
-  if (message.includes(" sign out") || message.includes("@hormesaver sign out")) {
+  if (message.includes(" sign out") || message.includes("sign out")) {
   	dropToken = 'undefined';
   	slack.chat.postMessage({ channel: channel, text: "<@"+ data.user +">! Your dropbox is unauthenticated!!" })
 	  .catch(console.error);
