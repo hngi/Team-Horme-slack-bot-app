@@ -17,7 +17,8 @@ var slackaccess = localStorage.getItem('x-accesstoken');
 const dropKey = process.env.DROPBOX_APP_KEY;
 const dropSecret = process.env.DROPBOX_APP_SECRET;
 const uuid = require('uuid/v4');
-var dropToken;
+const siteAddress = process.env.SITE_ADDRESS
+var dropToken = 'undefined';
  
 // var api = ndbx.api(dropToken);
 
@@ -71,7 +72,7 @@ app.get('/', (req, res) => {
   res.send('<div style="text-align: center;"><a href="/auth/slack"><img alt="Add to Slack" height="40" width="139" src="https://platform.slack-edge.com/img/add_to_slack.png" srcset="https://platform.slack-edge.com/img/add_to_slack.png 1x, https://platform.slack-edge.com/img/add_to_slack@2x.png 2x" /></a></div>');
 });
 app.get('/auth/slack', passport.authenticate('slack', {
-  scope: ['bot']
+  scope: ['bot', 'im:read', 'im:write']
 }));
 app.get('/auth/slack/callback',
   passport.authenticate('slack', { session: false }),
@@ -84,7 +85,7 @@ app.get('/auth/slack/callback',
 );
 
 app.get('/login/dropbox', (req, res)=>{
-  ndbx.Authenticate(dropKey, dropSecret, 'https://saverbyhorme.glitch.me/oauth/callback', (err, url) => {
+  ndbx.Authenticate(dropKey, dropSecret, siteAddress+'/oauth/callback', (err, url) => {
 	//console.log(url);
     res.redirect(url)
   });
@@ -93,7 +94,7 @@ app.get('/login/dropbox', (req, res)=>{
 app.get('/oauth/callback', (req, res) => {
   // console.log(req)
   var rescode = req.query.code;
-  ndbx.AccessToken(dropKey, dropSecret, rescode, 'https://saverbyhorme.glitch.me/oauth/callback', (err, body) => {
+  ndbx.AccessToken(dropKey, dropSecret, rescode, siteAddress+'/oauth/callback', (err, body) => {
 	var access_token = body.access_token;
   // console.log(body);
   // localStorage.setItem('access-token', access_token);
@@ -142,6 +143,7 @@ slackEvents.on('message', (message, body) => {
 const date = Date.now();
 
 const saveHistory = (history, message, slack) => {
+  if (dropToken == 'undefined') return slack.chat.postMessage({channel: message.channel, text: `Please sign in your Dropbox application to continue...`})
   const dfs = require('dropbox-fs')({
     apiKey: dropToken
   });
@@ -155,7 +157,7 @@ const saveHistory = (history, message, slack) => {
         
       }
       console.log(stat);
-      slack.chat.postMessage({ channel: message.channel, text: "Hello <@"+message.user+">! Your chat history is saved to your dropbox public folder Type @hormesaver `check files` to check it :tada:" }).catch(console.error);
+      slack.chat.postMessage({ channel: message.channel, text: "Hello <@"+message.user+">! Your chat history is saved to your dropbox public folder Type `@hormesaver check files` to check it :tada:" }).catch(console.error);
       
     }
   );
@@ -180,6 +182,7 @@ const handleMessage = (data, body) => {
   var message = data.text;
   var channel = data.channel;
   const slack = getClientByTeamId(body.team_id);
+  // if(typeof dropToken == 'undefined') return slack.chat.postMessage({channel: message.channel, text: `Please sign in your Dropbox application to continue...`})
   const dfs = require('dropbox-fs')({
     apiKey: dropToken
 });
@@ -189,7 +192,7 @@ const handleMessage = (data, body) => {
     message.includes(" sign in")
   ) {
     
-    var msg = `Authenticate your dropbox account by clicking https://saverbyhorme.glitch.me/login/dropbox`;
+    var msg = `Authenticate your dropbox account by clicking ${siteAddress}/login/dropbox`;
     
     slack.chat.postMessage({ channel: channel, text: msg })
     .catch(console.error);
@@ -242,6 +245,7 @@ slackEvents.on('error', (error) => {
     // This error type also has a `body` propery containing the request body which failed verification.
     console.error(`An unverified request was sent to the Slack events Request URL. Request body: \
 ${JSON.stringify(error.body)}`);
+    console.error(error);
   } else {
     console.error(`An error occurred while handling a Slack event: ${error.message}`);
   }
