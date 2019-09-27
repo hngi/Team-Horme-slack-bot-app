@@ -182,7 +182,9 @@ const handleMessage = (data, body) => {
   var message = data.text;
   var channel = data.channel;
   const slack = getClientByTeamId(body.team_id);
-  // if(typeof dropToken == 'undefined') return slack.chat.postMessage({channel: message.channel, text: `Please sign in your Dropbox application to continue...`})
+  if(dropToken === 'undefined') {
+    return slack.chat.postMessage({channel: message.channel, text: `Please sign in your Dropbox application to continue...`})
+  }
   const dfs = require('dropbox-fs')({
     apiKey: dropToken
 });
@@ -222,6 +224,11 @@ Typing @hormesaver signin or @hormesaver signin \n To check the files saved to d
     .catch(console.error);
     });
 });
+  }
+  if (message.includes(" sign out") || message.includes("@hormesaver sign out")) {
+  	dropToken = 'undefined';
+  	slack.chat.postMessage({ channel: channel, text: "<@"+ data.user +">! Your dropbox is unauthenticated!!" })
+	  .catch(console.error);
   }
 };
 
