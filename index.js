@@ -149,7 +149,7 @@ const saveHistory = (history, message, slack) => {
             ]
         }
     ]
-  if (dropToken == 'undefined') return slack.chat.postMessage({channel: message.channel, text: `Please sign in your Dropbox application to continue...`, attachments})
+  if (dropToken == 'undefined') return slack.chat.postEphemeral({channel: message.channel, text: `Please sign in your Dropbox application to continue...`, attachments, user: message.user})
   const dfs = require('dropbox-fs')({
     apiKey: dropToken
   });
@@ -163,7 +163,7 @@ const saveHistory = (history, message, slack) => {
         
       }
       console.log(stat);
-      slack.chat.postMessage({ channel: message.channel, text: "Hello <@"+message.user+">! Your chat history is saved to your dropbox public folder Type `check files` to check it :tada:" }).catch(console.error);
+      slack.chat.postEphemeral({ channel: message.channel, text: "Hello <@"+message.user+">! Your chat history is saved to your dropbox public folder Type `check files` to check it :tada:" , user: message.user}).catch(console.error);
       
     }
   );
@@ -175,7 +175,7 @@ const getChannelHistory = (message, slack) => {
   var xhr = new XMLHttpRequest();
   xhr.onreadystatechange = function() {
     if (xhr.readyState == 4 && xhr.status == 200)
-      slack.chat.postMessage({ channel: message.channel, text: "<@"+ message.user +">! Now saving your chat history to dropbox..." })
+      slack.chat.postEphemeral({ channel: message.channel, text: "<@"+ message.user +">! Now saving your chat history to dropbox..." , user : message.user})
     .catch(console.error);
       saveHistory(xhr.responseText, message, slack);
     // console.log(xhr.responseText)
@@ -211,33 +211,33 @@ const handleMessage = (data, body) => {
             ]
         }
     ]
-    slack.chat.postMessage({ channel, text: msg, attachments })
+    slack.chat.postEphemeral({ channel, text: msg, attachments, user: data.user })
     .catch(console.error);
   }
   if (message.includes(" save history") || message.includes("save history")) {
-    slack.chat.postMessage({ channel: channel, text: "<@"+ data.user +">! Getting your chat history from slack..." })
+    slack.chat.postEphemeral({ channel: channel, text: "<@"+ data.user +">! Getting your chat history from slack..." , user: data.user})
     .catch(console.error);
     getChannelHistory(data, slack);
   }
   if (message.includes(" help") || message.includes("@hormesaver help")) {
-    slack.chat.postMessage({ channel: channel, text: `To save your chat history to dropbox,\n 
+    slack.chat.postEphemeral({ channel: channel, text: `To save your chat history to dropbox,\n 
 Kindly type \`save history\`. \n To do this required login in to your dropbox which you can also do by
 Typing \`signin\` or \`sign in\` \n To check the files saved to dropbox type \`check files\` \n 
 and sign out when you are through by typing \`sign out\` to prevent others using your Dropbox account because this app 
-can only run for one user at a time. Because no database yet. Thank you :wink: :+1:` })
+can only run for one user at a time. Because no database yet. Thank you :wink: :+1:`, user: data.user })
     .catch(console.error);
   }
   if(message.includes(" check files")){  dfs.readdir('/slackchathistory', (err, result) => {
     if (err) {
-	return slack.chat.postMessage({ channel: channel, text: "Sorry! <@"+ data.user +">! Error while reading your dropbox folder..." })
+	return slack.chat.postEphemeral({ channel: channel, text: "Sorry! <@"+ data.user +">! Error while reading your dropbox folder..." , user: data.user})
     .catch(console.error);
     }
     // console.log(result);
-      slack.chat.postMessage({ channel: channel, text: "<@"+ data.user +">! Your slack chat json hitsory files are : " })
+      slack.chat.postEphemeral({ channel: channel, text: "<@"+ data.user +">! Your slack chat json hitsory files are : ", user: data.user })
     .catch(console.error);
     result.forEach(file => {
       
-      slack.chat.postMessage({ channel: channel, text: file })
+      slack.chat.postEphemeral({ channel: channel, text: file, user: data.user })
     .catch(console.error);
     });
 });
@@ -245,7 +245,7 @@ can only run for one user at a time. Because no database yet. Thank you :wink: :
   
    if (message.includes(" sign out") || message.includes("sign out")) {
   	dropToken = 'undefined';
-  	slack.chat.postMessage({ channel: channel, text: "<@"+ data.user +">! Your dropbox is unauthenticated!!" })
+  	slack.chat.postEphemeral({ channel: channel, text: "<@"+ data.user +">! Your dropbox is unauthenticated!!", user: data.user })
 	  .catch(console.error);
   }
 };
