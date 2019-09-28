@@ -64,7 +64,7 @@ const app = express();
 // Plug the Add to Slack (OAuth) helpers into the express app
 app.use(passport.initialize());
 app.get('/', (req, res) => {
-  res.send('<div style="text-align: center;"><a href="/auth/slack"><img alt="Add to Slack" height="40" width="139" src="https://platform.slack-edge.com/img/add_to_slack.png" srcset="https://platform.slack-edge.com/img/add_to_slack.png 1x, https://platform.slack-edge.com/img/add_to_slack@2x.png 2x" /></a></div>');
+  res.sendFile(path.join(__dirname, 'views', 'index.html'));
 });
 app.get('/auth/slack', passport.authenticate('slack', {
   scope: ['bot', 'im:read', 'im:write']
@@ -72,7 +72,7 @@ app.get('/auth/slack', passport.authenticate('slack', {
 app.get('/auth/slack/callback',
   passport.authenticate('slack', { session: false }),
   (req, res) => {
-    res.send('<p>Conversation Saver was successfully installed on your team.</p>');
+    res.sendFile(path.join(__dirname, 'views', 'auth.html'));
   },
   (err, req, res, next) => {
     res.status(500).send(`<p>Horme Conversation Saver failed to install</p> <pre>${err}</pre>`);
@@ -98,11 +98,11 @@ app.get('/oauth/callback', (req, res) => {
 });
 
 app.get('/dropbox', (req, res) => {
-  res.send('Dropbox is now authenticated')
+  res.sendFile(path.join(__dirname, 'views', 'dropbox.html'))
 })
 
 app.get('/login',(req, res) => {
-  res.send('<div style="text-align: center;"><a href="/login/dropbox">Login to Dropbox</a></div>');
+  res.sendFile(path.join(__dirname, 'views', 'authdropbox.html'));
 });
 
 
