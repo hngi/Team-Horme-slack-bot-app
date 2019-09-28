@@ -9,7 +9,7 @@ const http = require('http');
 const path = require('path');
 const express = require('express');
 const ndbx = require('node-dropbox');
-const XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest
+const XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
 const dropKey = process.env.DROPBOX_APP_KEY;
 const dropSecret = process.env.DROPBOX_APP_SECRET;
 const uuid = require('uuid/v4');
@@ -51,7 +51,6 @@ passport.use(new SlackStrategy({
   clientSecret: process.env.SLACK_CLIENT_SECRET,
   skipUserProfile: true,
 }, (accessToken, scopes, team, extra, profiles, done) => {
-  localStorage.setItem('x-accesstoken', accessToken);
   authToken = accessToken;
   botAuthorizations[team.id] = extra.bot.accessToken;
   done(null, {});
@@ -93,7 +92,6 @@ app.get('/oauth/callback', (req, res) => {
   ndbx.AccessToken(dropKey, dropSecret, rescode, siteAddress+'/oauth/callback', (err, body) => {
 	var access_token = body.access_token;
   // console.log(body);
-  // localStorage.setItem('access-token', access_token);
   dropToken = access_token;
   res.redirect('/dropbox')
 }); 
@@ -139,7 +137,19 @@ slackEvents.on('message', (message, body) => {
 const date = Date.now();
 
 const saveHistory = (history, message, slack) => {
-  if (dropToken == 'undefined') return slack.chat.postMessage({channel: message.channel, text: `Please sign in your Dropbox application to continue...`})
+  var attachments = [
+        {
+            "fallback": "Authenticate your dropbox at https://saverbyhorme.glitch.me/login/dropbox",
+            "actions": [
+                {
+                    "type": "button",
+                    "text": "Authenticate Dropbox",
+                    "url": "https://saverbyhorme.glitch.me/login/dropbox"
+                }
+            ]
+        }
+    ]
+  if (dropToken == 'undefined') return slack.chat.postMessage({channel: message.channel, text: `Please sign in your Dropbox application to continue...`, attachments})
   const dfs = require('dropbox-fs')({
     apiKey: dropToken
   });
@@ -153,7 +163,7 @@ const saveHistory = (history, message, slack) => {
         
       }
       console.log(stat);
-      slack.chat.postMessage({ channel: message.channel, text: "Hello <@"+message.user+">! Your chat history is saved to your dropbox public folder Type `@hormesaver check files` to check it :tada:" }).catch(console.error);
+      slack.chat.postMessage({ channel: message.channel, text: "Hello <@"+message.user+">! Your chat history is saved to your dropbox public folder Type `check files` to check it :tada:" }).catch(console.error);
       
     }
   );
@@ -178,19 +188,30 @@ const handleMessage = (data, body) => {
   var message = data.text;
   var channel = data.channel;
   const slack = getClientByTeamId(body.team_id);
-  if(dropToken == 'undefined') return slack.chat.postMessage({channel: message.channel, text: `Please sign in your Dropbox application to continue...`})
+  // if(typeof dropToken == 'undefined') return slack.chat.postMessage({channel: message.channel, text: `Please sign in your Dropbox application to continue...`})
   const dfs = require('dropbox-fs')({
     apiKey: dropToken
-  });
+});
   // console.log(channel);
   if (
     message.includes(" signin") ||
     message.includes(" sign in")
   ) {
     
-    var msg = `Authenticate your dropbox account by clicking ${siteAddress}/login/dropbox`;
-    
-    slack.chat.postMessage({ channel: channel, text: msg })
+    var msg = `Authenticate your dropbox account by clicking`;
+    var attachments = [
+        {
+            "fallback": "Authenticate your dropbox at https://saverbyhorme.glitch.me/login/dropbox",
+            "actions": [
+                {
+                    "type": "button",
+                    "text": "Authenticate Dropbox",
+                    "url": "https://saverbyhorme.glitch.me/login/dropbox"
+                }
+            ]
+        }
+    ]
+    slack.chat.postMessage({ channel, text: msg, attachments })
     .catch(console.error);
   }
   if (message.includes(" save history") || message.includes("save history")) {
@@ -199,14 +220,16 @@ const handleMessage = (data, body) => {
     getChannelHistory(data, slack);
   }
   if (message.includes(" help") || message.includes("@hormesaver help")) {
-    slack.chat.postMessage({ channel: channel, text: `To save your chat history to dropbox with hormesaver,\n 
-Kindly type save history. \n To do this required login in to your dropbox which you can also do by
-Typing signin or signin \n To check the files saved to dropbox type check files` })
+    slack.chat.postMessage({ channel: channel, text: `To save your chat history to dropbox,\n 
+Kindly type \`save history\`. \n To do this required login in to your dropbox which you can also do by
+Typing \`signin\` or \`sign in\` \n To check the files saved to dropbox type \`check files\` \n 
+and sign out when you are through by typing \`sign out\` to prevent others using your Dropbox account because this app 
+can only run for one user at a time. Because no database yet. Thank you :wink: :+1:` })
     .catch(console.error);
   }
   if(message.includes(" check files")){  dfs.readdir('/slackchathistory', (err, result) => {
     if (err) {
-	return slack.chat.postMessage({ channel: channel, text: "Sorry! <@"+ data.user +">! Error "+err.status.code+" while reading your dropbox folder..." })
+	return slack.chat.postMessage({ channel: channel, text: "Sorry! <@"+ data.user +">! Error while reading your dropbox folder..." })
     .catch(console.error);
     }
     // console.log(result);
@@ -219,7 +242,8 @@ Typing signin or signin \n To check the files saved to dropbox type check files`
     });
 });
   }
-  if (message.includes(" sign out") || message.includes("sign out")) {
+  
+   if (message.includes(" sign out") || message.includes("sign out")) {
   	dropToken = 'undefined';
   	slack.chat.postMessage({ channel: channel, text: "<@"+ data.user +">! Your dropbox is unauthenticated!!" })
 	  .catch(console.error);
