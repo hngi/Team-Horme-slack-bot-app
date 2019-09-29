@@ -24,7 +24,7 @@ Project is created with:
 To reuse this project, install it locally using npm:
 
 ```
-$ cd ../lorem
+$ cd ../your working folder
 $ npm install
 $ npm start
 ```
